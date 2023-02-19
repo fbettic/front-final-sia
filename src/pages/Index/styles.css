@@ -1,0 +1,78 @@
+
+  .container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    justify-content: cente;
+    align-items: center;
+  }
+  
+  .row {
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    height: 100%;
+  }
+
+
+  .robot{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 12rem;
+    width: 12rem;
+    color: #ffffff;
+  }
+
+  .up, .down, .left, .right {
+    display: flex;
+    height: 100%;
+    color: #ffffff;
+    justify-content: center;
+    text-align: center;
+    align-items: center;
+    width: 30%;
+    flex-direction: column;
+  }
+
+  .up{
+    justify-content: flex-end;
+  }
+
+  .down{
+    justify-content: flex-start;
+  }
+
+  .right{
+    flex-direction: row;
+    justify-content: flex-start;
+  }
+
+  .left{
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+
+  .upArrow{
+    transform: rotate(90deg);
+  }
+
+  .downArrow{
+    transform: rotate(270deg);
+  }
+
+  .rightArrow{
+    transform: rotate(180deg);
+  }
+
+
+
+  .robotIcon {
+    font-size: 10em;
+  }
+  .btn{
+    width: 30%;
+    height: 40%;
+    display: flex;
+    flex-direction: column;
+  }
