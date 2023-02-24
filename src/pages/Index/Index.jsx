@@ -21,19 +21,24 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import Typography from '@mui/material/Typography';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import Card from '@mui/material/Card';
+import CardActions from '@mui/material/CardActions';
+import CardContent from '@mui/material/CardContent';
+import Switch from '@mui/material/Switch';
+import FormGroup from '@mui/material/FormGroup';
+import FormControlLabel from '@mui/material/FormControlLabel';
 
 const baseURL = 'http://localhost:8080'
 
-const trainingSet = [
+const testingSet = [
 	{ id: 1, S1: "1", S2: "-1", S3: "-1", S4: "-1", ME1: "1", ME2: "-1", MO1: null, MO2: null, res: null },
 	{ id: 2, S1: "1", S2: "-1", S3: "1", S4: "-1", ME1: "1", ME2: "-1", MO1: null, MO2: null, res: null },
 	{ id: 3, S1: "-1", S2: "1", S3: "1", S4: "-1", ME1: "-1", ME2: "-1", MO1: null, MO2: null, res: null },
 	{ id: 4, S1: "-1", S2: "1", S3: "-1", S4: "1", ME1: "-1", ME2: "1", MO1: null, MO2: null, res: null },
-	{ id: 5, S1: "-1", S2: "-1", S3: "1", S4: "-1", ME1: "1", ME2: "-1", MO1: null, MO2: null, res: null },
-	{ id: 6, S1: "1", S2: "-1", S3: "-1", S4: "1", ME1: "1", ME2: "1", MO1: null, MO2: null, res: null },
-	{ id: 7, S1: "-1", S2: "-1", S3: "-1", S4: "1", ME1: "1", ME2: "1", MO1: null, MO2: null, res: null },
+	{ id: 5, S1: "1", S2: "1", S3: "1", S4: "1", ME1: "-1", ME2: "-1", MO1: null, MO2: null, res: null },
 ]
 
+/*
 const testingSet = [
 	{ id: 1, S1: "1", S2: "-1", S3: "-1", S4: "-1", ME1: "1", ME2: "-1", MO1: null, MO2: null, res: null },
 	{ id: 2, S1: "1", S2: "-1", S3: "1", S4: "-1", ME1: "1", ME2: "-1", MO1: null, MO2: null, res: null },
@@ -42,7 +47,7 @@ const testingSet = [
 	{ id: 5, S1: "1", S2: "1", S3: "1", S4: "1", ME1: "-1", ME2: "-1", MO1: null, MO2: null, res: null },
 	{ id: 6, S1: "1", S2: "-1", S3: "1", S4: "1", ME1: "1", ME2: "-1", MO1: null, MO2: null, res: null },
 	{ id: 7, S1: "1", S2: "1", S3: "-1", S4: "1", ME1: "-1", ME2: "1", MO1: null, MO2: null, res: null },
-]
+]*/
 
 const Index = () => {
 	const [inProcess, setInProcess] = useState(false)
@@ -51,6 +56,40 @@ const Index = () => {
 	const [nextPattern, setNextPattern] = useState(null)
 	const [lastId, setLastid] = useState(0)
 	const [error, setError] = useState("")
+	//const [isBackpropagation, setIsBackpropagation] = useState(false)
+	const [isVectorized, setIsVectorized] = useState(true)
+	const [change, setChange] = useState(false)
+	const [nnData, setNnData] = useState(null)
+
+
+	const changeNeuralNetwork = async () => {
+		setInProcess(true);
+		try {
+			const response = await fetch(`${baseURL}/changeModel/${isVectorized ? 'p-v' : 'p-nv'}`, {
+				method: 'GET',
+				headers: {
+					'Content-Type': 'application/json',
+					'Access-Control-Allow-Origin': '*',
+					'Accept': '*/*'
+				}
+			});
+			const json = await response.json();
+
+			const newData = {
+				...json,
+				bias: [json.useBias[0] ? json.bias[0] : 'No', json.useBias[1] ? json.bias[1] : 'No'],
+			}
+
+			setNnData(json)
+			setLastid(lastId + 1)
+
+		} catch (error) {
+			console.error(error);
+		}
+		setInProcess(false);
+		setChange(false)
+	}
+
 
 	const getObstacles = async () => {
 
@@ -117,12 +156,11 @@ const Index = () => {
 
 
 				const newPattern = { ...pattern }
+				newPattern.MO1 = json.NNResponse.M1
+				newPattern.MO2 = json.NNResponse.M2
+				newPattern.res = json.Desc === '' ? '1' : '-1'
+
 				if (json.Desc === '') {
-
-					newPattern.MO1 = json.Resp.M1
-					newPattern.MO2 = json.Resp.M2
-					newPattern.res = "1"
-
 					const nextPattern = {
 						id: lastId + 1,
 						S1: json.Resp.S1,
@@ -134,8 +172,6 @@ const Index = () => {
 						res: null
 					}
 					setNextPattern(nextPattern)
-				} else {
-					newPattern.res = "-1"
 				}
 
 				const newRegister = [...register]
@@ -148,13 +184,10 @@ const Index = () => {
 				setLastid(lastId + 1)
 			} else {
 
-				if (json.Desc === '') {
-					pattern.MO1 = json.Resp.M1
-					pattern.MO2 = json.Resp.M2
-					pattern.res = "1"
-				} else {
-					pattern.res = "-1"
-				}
+				pattern.MO1 = json.NNResponse.M1
+				pattern.MO2 = json.NNResponse.M2
+				pattern.res = json.Desc === '' ? '1' : '-1'
+
 				setLastPattern(pattern)
 				setError(json.Desc)
 			}
@@ -183,12 +216,24 @@ const Index = () => {
 		getObstacles()
 	}
 
+
+	const handleVectorized = (e) => {
+		setIsVectorized(!e.target.checked)
+		setChange(true)
+	}
+
+	const handleChange = () => {
+		changeNeuralNetwork()
+	}
+
 	const isClear = (sensor) => {
 		if (sensor === '1') {
 			return <Occupied />
 		}
 		return <Check />
 	}
+
+
 
 	const isExpectedResult = (res) => {
 		if (res === null) {
@@ -211,11 +256,13 @@ const Index = () => {
 	}
 
 
+
+
 	return (
 		<>
-			
-				<Box sx={{ flexGrow: 1 }}>
-					<AppBar position="fixed">
+
+			<Box sx={{ flexGrow: 1 }}>
+				<AppBar position="fixed">
 					{lastPattern !== null ?
 						<Toolbar className="toolbar">
 							<div style={{ marginBottom: '10px' }}>
@@ -263,74 +310,110 @@ const Index = () => {
 									<LinearProgress />
 								</Box>
 							}
-							
-						</Toolbar>:
+
+						</Toolbar> :
 						<Toolbar className="toolbar">
 							<div className="headerTitle">
-								<Robot sx={{fontSize: '40px'}}/>
-								<Typography sx={{fontSize: '30px', marginLeft:'10px'}}>Roberto</Typography>
+								<Robot sx={{ fontSize: '40px' }} />
+								<Typography sx={{ fontSize: '30px', marginLeft: '10px' }}>Roberto</Typography>
 							</div>
-							
+
 						</Toolbar>
-						}
-					</AppBar>
-				</Box>
-			
-			<div className="container" style={{ marginTop: lastPattern !== null ? '180px' : '110px' }}>
+					}
+				</AppBar>
+			</Box>
 
-				<Accordion style={{ width: '100%' }} defaultExpanded={true}>
-					<AccordionSummary
-						expandIcon={<ExpandMoreIcon />}
-						aria-controls="panel1a-content"
-						id="panel1a-header"
-					>
-						<Typography>Training Set</Typography>
-					</AccordionSummary>
-					<AccordionDetails>
-						<TableContainer>
-							<Table sx={{ minWidth: 650 }} aria-label="simple table">
-								<TableHead>
-									<TableRow>
-										<TableCell >Id</TableCell>
-										<TableCell align="center">Sensor1</TableCell>
-										<TableCell align="center">Sensor1</TableCell>
-										<TableCell align="center">Sensor3</TableCell>
-										<TableCell align="center">Sensor4</TableCell>
-										<TableCell align="center">Motor1 Esp.</TableCell>
-										<TableCell align="center">Motor2 Esp.</TableCell>
-										<TableCell align="center">Motor1 Obt.</TableCell>
-										<TableCell align="center">Motor2 Obt.</TableCell>
-										<TableCell align="center">Resultado</TableCell>
-										<TableCell align="center"></TableCell>
-									</TableRow>
-								</TableHead>
-								<TableBody>
-									{trainingSet.sort((a, b) => a.id - b.id).map((row) => (
-										<TableRow
-											key={row.id}
-											sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-										>
-											<TableCell align="center">{row.id}</TableCell>
-											<TableCell align="center">{isClear(row.S1)}</TableCell>
-											<TableCell align="center">{isClear(row.S2)}</TableCell>
-											<TableCell align="center">{isClear(row.S3)}</TableCell>
-											<TableCell align="center">{isClear(row.S4)}</TableCell>
-											<TableCell align="center">{getRotation(row.ME1)}</TableCell>
-											<TableCell align="center">{getRotation(row.ME2)}</TableCell>
-											<TableCell align="center">{getRotation(row.MO1)}</TableCell>
-											<TableCell align="center">{getRotation(row.MO2)}</TableCell>
-											<TableCell align="center">{isExpectedResult(row.res)}</TableCell>
-											<TableCell align="center"><Button className="btn" variant={'contained'} onClick={() => handleTest(row, 'training')} disabled={inProcess} >
-												<span>Test</span>
-											</Button></TableCell>
+			{nnData === null ?
+				<Button variant="outlined" size="small" style={{ marginTop: '200px' }} onClick={handleChange}>START</Button>
+				:
+				<div className="container" style={{ marginTop: lastPattern !== null ? '180px' : '110px' }}>
+
+					<div>
+						<Card variant="outlined">
+							<CardContent>
+								<Typography sx={{ fontSize: 14 }} color="text.secondary" gutterBottom>
+									Neural Network Information
+								</Typography>
+
+								<Typography variant="body2" style={{fontFamily: 'Calibri'}}>
+									Bias: {nnData.bias.map(elem => elem + " ")} <br/>
+									Epochs: {nnData.epochs.map(elem => elem + " ")},<br/>
+									initialWeights: |{nnData.initialWeights.map(elem => elem + "|")},<br/>
+									learningRate: {nnData.learningRate.map(elem => elem + " ")},<br/>
+									test:<br/>
+									pv: {JSON.stringify(nnData.tests[0])},<br/>
+									pnv: {JSON.stringify(nnData.tests[1])},<br/>
+								</Typography>
+							</CardContent>
+							<CardActions>
+								<div style={{ display: 'flex', flexDirection: 'column', padding: '10px 10px' }}>
+									<Typography sx={{ fontSize: 14 }} color="text.secondary" gutterBottom>
+										Options
+									</Typography>
+
+
+									<div>
+										<FormControlLabel control={<Switch checked={!isVectorized} onChange={handleVectorized} />} label="No Vectorized" />
+										<Button variant="outlined" size="small" onClick={handleChange} disabled={!change || inProcess}>apply</Button>
+									</div>
+								</div>
+							</CardActions>
+						</Card>
+					</div>
+
+					<Accordion style={{ width: '100%' }} defaultExpanded={true}>
+						<AccordionSummary
+							expandIcon={<ExpandMoreIcon />}
+							aria-controls="panel1a-content"
+							id="panel1a-header"
+						>
+							<Typography>Testing Set</Typography>
+						</AccordionSummary>
+						<AccordionDetails>
+							<TableContainer>
+								<Table sx={{ minWidth: 650 }} aria-label="simple table">
+									<TableHead>
+										<TableRow>
+											<TableCell >Id</TableCell>
+											<TableCell align="center">Sensor1</TableCell>
+											<TableCell align="center">Sensor1</TableCell>
+											<TableCell align="center">Sensor3</TableCell>
+											<TableCell align="center">Sensor4</TableCell>
+											<TableCell align="center">Motor1 Esp.</TableCell>
+											<TableCell align="center">Motor2 Esp.</TableCell>
+											<TableCell align="center">Motor1 Obt.</TableCell>
+											<TableCell align="center">Motor2 Obt.</TableCell>
+											<TableCell align="center">Resultado</TableCell>
+											<TableCell align="center"></TableCell>
 										</TableRow>
-									))}
-								</TableBody>
-							</Table>
-						</TableContainer>
-					</AccordionDetails>
-				</Accordion>
-
+									</TableHead>
+									<TableBody>
+										{testingSet.sort((a, b) => a.id - b.id).map((row) => (
+											<TableRow
+												key={row.id}
+												sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+											>
+												<TableCell align="center">{row.id}</TableCell>
+												<TableCell align="center">{isClear(row.S1)}</TableCell>
+												<TableCell align="center">{isClear(row.S2)}</TableCell>
+												<TableCell align="center">{isClear(row.S3)}</TableCell>
+												<TableCell align="center">{isClear(row.S4)}</TableCell>
+												<TableCell align="center">{getRotation(row.ME1)}</TableCell>
+												<TableCell align="center">{getRotation(row.ME2)}</TableCell>
+												<TableCell align="center">{getRotation(row.MO1)}</TableCell>
+												<TableCell align="center">{getRotation(row.MO2)}</TableCell>
+												<TableCell align="center">{isExpectedResult(row.res)}</TableCell>
+												<TableCell align="center"><Button className="btn" variant={'contained'} onClick={() => handleTest(row, 'testing')} disabled={inProcess} >
+													<span>Test</span>
+												</Button></TableCell>
+											</TableRow>
+										))}
+									</TableBody>
+								</Table>
+							</TableContainer>
+						</AccordionDetails>
+					</Accordion>
+					{/* 
 				<Accordion style={{ width: '100%' }}>
 					<AccordionSummary
 						expandIcon={<ExpandMoreIcon />}
@@ -384,76 +467,77 @@ const Index = () => {
 						</TableContainer>
 					</AccordionDetails>
 				</Accordion>
-				<Accordion style={{ width: '100%' }}>
-					<AccordionSummary
-						expandIcon={<ExpandMoreIcon />}
-						aria-controls="panel1a-content"
-						id="panel1a-header"
-					>
-						<Typography>Live Test</Typography>
-					</AccordionSummary>
-					<AccordionDetails>
-						{register.length > 0 ?
-							<>
-								<div style={{display:'flex', width:'100%', justifyContent:'center'}}>
-									<Button className="btn" variant={'outlined'} onClick={handleAdd} disabled={inProcess || nextPattern === null}>
-										<span>Add</span>
+				*/}
+					<Accordion style={{ width: '100%' }}>
+						<AccordionSummary
+							expandIcon={<ExpandMoreIcon />}
+							aria-controls="panel1a-content"
+							id="panel1a-header"
+						>
+							<Typography>Live Test</Typography>
+						</AccordionSummary>
+						<AccordionDetails>
+							{register.length > 0 ?
+								<>
+									<div style={{ display: 'flex', width: '100%', justifyContent: 'center' }}>
+										<Button className="btn" variant={'outlined'} onClick={handleAdd} disabled={inProcess || nextPattern === null}>
+											<span>Add</span>
+										</Button>
+									</div>
+									<TableContainer>
+										<Table sx={{ minWidth: 650 }} aria-label="simple table">
+											<TableHead>
+												<TableRow>
+													<TableCell >Id</TableCell>
+													<TableCell align="center">Sensor1</TableCell>
+													<TableCell align="center">Sensor1</TableCell>
+													<TableCell align="center">Sensor3</TableCell>
+													<TableCell align="center">Sensor4</TableCell>
+													<TableCell align="center">Motor1 Obt.</TableCell>
+													<TableCell align="center">Motor2 Obt.</TableCell>
+													<TableCell align="center">Resultado</TableCell>
+													<TableCell align="center"></TableCell>
+												</TableRow>
+											</TableHead>
+
+											<TableBody>
+												{
+													register.sort((a, b) => a.id - b.id).map((row) => (
+														<TableRow
+															key={row.id}
+															sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+														>
+															<TableCell align="center">{row.id}</TableCell>
+															<TableCell align="center">{isClear(row.S1)}</TableCell>
+															<TableCell align="center">{isClear(row.S2)}</TableCell>
+															<TableCell align="center">{isClear(row.S3)}</TableCell>
+															<TableCell align="center">{isClear(row.S4)}</TableCell>
+															<TableCell align="center">{getRotation(row.MO1)}</TableCell>
+															<TableCell align="center">{getRotation(row.MO2)}</TableCell>
+															<TableCell align="center">{isExpectedResult(row.res)}</TableCell>
+															<TableCell align="center"><Button className="btn" variant={'contained'} onClick={() => handleTest(row, 'live')} disabled={inProcess} >
+																<span>Run</span>
+															</Button></TableCell>
+														</TableRow>))}
+
+											</TableBody>
+										</Table>
+									</TableContainer>
+								</>
+								:
+								<div style={{ display: 'flex', width: '100%', justifyContent: 'center' }}>
+									<Button className="btn" variant={'outlined'} onClick={handleStart} disabled={inProcess}>
+										<span>Start</span>
 									</Button>
 								</div>
-								<TableContainer>
-									<Table sx={{ minWidth: 650 }} aria-label="simple table">
-										<TableHead>
-											<TableRow>
-												<TableCell >Id</TableCell>
-												<TableCell align="center">Sensor1</TableCell>
-												<TableCell align="center">Sensor1</TableCell>
-												<TableCell align="center">Sensor3</TableCell>
-												<TableCell align="center">Sensor4</TableCell>
-												<TableCell align="center">Motor1 Obt.</TableCell>
-												<TableCell align="center">Motor2 Obt.</TableCell>
-												<TableCell align="center">Resultado</TableCell>
-												<TableCell align="center"></TableCell>
-											</TableRow>
-										</TableHead>
+							}
+						</AccordionDetails>
+					</Accordion>
 
-										<TableBody>
-											{
-												register.sort((a, b) => a.id - b.id).map((row) => (
-													<TableRow
-														key={row.id}
-														sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-													>
-														<TableCell align="center">{row.id}</TableCell>
-														<TableCell align="center">{isClear(row.S1)}</TableCell>
-														<TableCell align="center">{isClear(row.S2)}</TableCell>
-														<TableCell align="center">{isClear(row.S3)}</TableCell>
-														<TableCell align="center">{isClear(row.S4)}</TableCell>
-														<TableCell align="center">{getRotation(row.MO1)}</TableCell>
-														<TableCell align="center">{getRotation(row.MO2)}</TableCell>
-														<TableCell align="center">{isExpectedResult(row.res)}</TableCell>
-														<TableCell align="center"><Button className="btn" variant={'contained'} onClick={() => handleTest(row, 'live')} disabled={inProcess} >
-															<span>Run</span>
-														</Button></TableCell>
-													</TableRow>))}
+					<div style={{ height: '200px' }}>
 
-										</TableBody>
-									</Table>
-								</TableContainer>
-							</>
-							:
-							<div style={{display:'flex', width:'100%', justifyContent:'center'}}>
-								<Button className="btn" variant={'outlined'} onClick={handleStart} disabled={inProcess}>
-									<span>Start</span>
-								</Button>
-							</div>
-						}
-					</AccordionDetails>
-				</Accordion>
-
-				<div style={{ height: '200px' }}>
-
-				</div>
-				{/*
+					</div>
+					{/*
 
 					{
 						start &&
@@ -467,7 +551,8 @@ const Index = () => {
 					</Button>
 				*/}
 
-			</div>
+				</div>
+			}
 		</>
 	)
 }
